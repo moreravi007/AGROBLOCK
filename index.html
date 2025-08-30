@@ -90,6 +90,32 @@
                         </div>
                     </div>
 
+                    <!-- MetaMask Integration for Signup -->
+                    <div class="metamask-signup-section">
+                        <div class="metamask-signup-header">
+                            <h3>🦊 Connect MetaMask (Optional)</h3>
+                            <p>Connect your existing Ethereum wallet or use the generated one above</p>
+                        </div>
+                        <div class="metamask-signup-actions">
+                            <button type="button" id="metamaskSignupConnectBtn" class="btn btn--primary" onclick="connectMetaMaskSignup()">
+                                🦊 Connect MetaMask
+                            </button>
+                            <button type="button" id="metamaskSignupDisconnectBtn" class="btn btn--outline" onclick="disconnectMetaMaskSignup()" style="display: none;">
+                                Disconnect MetaMask
+                            </button>
+                        </div>
+                        <div class="metamask-signup-info" id="metamaskSignupInfo" style="display: none;">
+                            <div class="metamask-info-item">
+                                <span class="info-label">Network:</span>
+                                <span class="info-value" id="metamaskSignupNetwork">Not Connected</span>
+                            </div>
+                            <div class="metamask-info-item">
+                                <span class="info-label">Account:</span>
+                                <span class="info-value" id="metamaskSignupAccount">Not Connected</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn--primary btn--full-width">Create Account</button>
                     <div class="auth-links">
                         <a href="#" onclick="showLogin()">Already have an account? Login</a>
@@ -112,6 +138,28 @@
                 <div class="user-info">
                     <span class="user-name" id="farmerName">Loading...</span>
                     <span class="user-balance">💰 $<span id="farmerBalance">0.00</span></span>
+                </div>
+                
+                <!-- MetaMask Integration -->
+                <div class="metamask-section">
+                    <div class="metamask-info">
+                        <div class="metamask-status">
+                            <span class="status-label">Network:</span>
+                            <span class="status-value" id="metamaskNetworkInfo">Not Connected</span>
+                        </div>
+                        <div class="metamask-status">
+                            <span class="status-label">Account:</span>
+                            <span class="status-value" id="metamaskAccountInfo">Not Connected</span>
+                        </div>
+                    </div>
+                    <div class="metamask-actions">
+                        <button id="metamaskConnectBtn" class="btn btn--primary btn--sm" onclick="connectMetaMask()">
+                            🦊 Connect MetaMask
+                        </button>
+                        <button id="metamaskDisconnectBtn" class="btn btn--outline btn--sm" onclick="disconnectMetaMask()" style="display: none;">
+                            Disconnect
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -154,6 +202,45 @@
                             <!-- Transactions will be populated here -->
                         </div>
                     </section>
+
+                    <!-- Connection System Section -->
+                    <section class="connections-section">
+                        <h2>🔗 Connect with Others</h2>
+                        <div class="connections-tabs">
+                            <button class="tab-btn active" onclick="showTab('userDirectory')">👥 User Directory</button>
+                            <button class="tab-btn" onclick="showTab('connectionRequests')">📨 Requests</button>
+                            <button class="tab-btn" onclick="showTab('messages')">💬 Messages</button>
+                            <button class="tab-btn" onclick="showTab('activityFeed')">📰 Activity Feed</button>
+                        </div>
+                        
+                        <div class="tab-content active" id="userDirectory">
+                            <h3>Discover Users</h3>
+                            <div class="user-directory" id="userDirectory">
+                                <!-- Users will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="connectionRequests">
+                            <h3>Connection Requests</h3>
+                            <div class="connection-requests" id="connectionRequests">
+                                <!-- Connection requests will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="messages">
+                            <h3>Messages</h3>
+                            <div class="messages-container" id="messagesContainer">
+                                <!-- Messages will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="activityFeed">
+                            <h3>Recent Activity</h3>
+                            <div class="activity-feed" id="activityFeed">
+                                <!-- Activity feed will be populated here -->
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </main>
@@ -171,6 +258,28 @@
                 <div class="user-info">
                     <span class="user-name" id="transporterName">Loading...</span>
                     <span class="user-balance">💰 $<span id="transporterBalance">0.00</span></span>
+                </div>
+                
+                <!-- MetaMask Integration -->
+                <div class="metamask-section">
+                    <div class="metamask-info">
+                        <div class="metamask-status">
+                            <span class="status-label">Network:</span>
+                            <span class="status-value" id="metamaskNetworkInfo">Not Connected</span>
+                        </div>
+                        <div class="metamask-status">
+                            <span class="status-label">Account:</span>
+                            <span class="status-value" id="metamaskAccountInfo">Not Connected</span>
+                        </div>
+                    </div>
+                    <div class="metamask-actions">
+                        <button id="metamaskConnectBtn" class="btn btn--primary btn--sm" onclick="connectMetaMask()">
+                            🦊 Connect MetaMask
+                        </button>
+                        <button id="metamaskDisconnectBtn" class="btn btn--outline btn--sm" onclick="disconnectMetaMask()" style="display: none;">
+                            Disconnect
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -211,6 +320,45 @@
                         <!-- Active jobs will be populated here -->
                     </div>
                 </section>
+
+                <!-- Connection System Section -->
+                <section class="connections-section">
+                    <h2>🔗 Connect with Others</h2>
+                    <div class="connections-tabs">
+                        <button class="tab-btn active" onclick="showTab('userDirectory')">👥 User Directory</button>
+                        <button class="tab-btn" onclick="showTab('connectionRequests')">📨 Requests</button>
+                        <button class="tab-btn" onclick="showTab('messages')">💬 Messages</button>
+                        <button class="tab-btn" onclick="showTab('activityFeed')">📰 Activity Feed</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="userDirectory">
+                        <h3>Discover Users</h3>
+                        <div class="user-directory" id="userDirectory">
+                            <!-- Users will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="connectionRequests">
+                        <h3>Connection Requests</h3>
+                        <div class="connection-requests" id="connectionRequests">
+                            <!-- Connection requests will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="messages">
+                        <h3>Messages</h3>
+                        <div class="messages-container" id="messagesContainer">
+                            <!-- Messages will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="activityFeed">
+                        <h3>Recent Activity</h3>
+                        <div class="activity-feed" id="activityFeed">
+                            <!-- Activity feed will be populated here -->
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -227,6 +375,28 @@
                 <div class="user-info">
                     <span class="user-name" id="warehouseName">Loading...</span>
                     <span class="user-balance">💰 $<span id="warehouseBalance">10000.00</span></span>
+                </div>
+                
+                <!-- MetaMask Integration -->
+                <div class="metamask-section">
+                    <div class="metamask-info">
+                        <div class="metamask-status">
+                            <span class="status-label">Network:</span>
+                            <span class="status-value" id="metamaskNetworkInfo">Not Connected</span>
+                        </div>
+                        <div class="metamask-status">
+                            <span class="status-label">Account:</span>
+                            <span class="status-value" id="metamaskAccountInfo">Not Connected</span>
+                        </div>
+                    </div>
+                    <div class="metamask-actions">
+                        <button id="metamaskConnectBtn" class="btn btn--primary btn--sm" onclick="connectMetaMask()">
+                            🦊 Connect MetaMask
+                        </button>
+                        <button id="metamaskDisconnectBtn" class="btn btn--outline btn--sm" onclick="disconnectMetaMask()" style="display: none;">
+                            Disconnect
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -279,6 +449,45 @@
                             <!-- Available products will be populated here -->
                         </div>
                     </section>
+
+                    <!-- Connection System Section -->
+                    <section class="connections-section">
+                        <h2>🔗 Connect with Others</h2>
+                        <div class="connections-tabs">
+                            <button class="tab-btn active" onclick="showTab('userDirectory')">👥 User Directory</button>
+                            <button class="tab-btn" onclick="showTab('connectionRequests')">📨 Requests</button>
+                            <button class="tab-btn" onclick="showTab('messages')">💬 Messages</button>
+                            <button class="tab-btn" onclick="showTab('activityFeed')">📰 Activity Feed</button>
+                        </div>
+                        
+                        <div class="tab-content active" id="userDirectory">
+                            <h3>Discover Users</h3>
+                            <div class="user-directory" id="userDirectory">
+                                <!-- Users will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="connectionRequests">
+                            <h3>Connection Requests</h3>
+                            <div class="connection-requests" id="connectionRequests">
+                                <!-- Connection requests will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="messages">
+                            <h3>Messages</h3>
+                            <div class="messages-container" id="messagesContainer">
+                                <!-- Messages will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="activityFeed">
+                            <h3>Recent Activity</h3>
+                            <div class="activity-feed" id="activityFeed">
+                                <!-- Activity feed will be populated here -->
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </main>
@@ -296,6 +505,28 @@
                 <div class="user-info">
                     <span class="user-name" id="customerName">Loading...</span>
                     <span class="user-balance">💰 $<span id="customerBalance">5000.00</span></span>
+                </div>
+                
+                <!-- MetaMask Integration -->
+                <div class="metamask-section">
+                    <div class="metamask-info">
+                        <div class="metamask-status">
+                            <span class="status-label">Network:</span>
+                            <span class="status-value" id="metamaskNetworkInfo">Not Connected</span>
+                        </div>
+                        <div class="metamask-status">
+                            <span class="status-label">Account:</span>
+                            <span class="status-value" id="metamaskAccountInfo">Not Connected</span>
+                        </div>
+                    </div>
+                    <div class="metamask-actions">
+                        <button id="metamaskConnectBtn" class="btn btn--primary btn--sm" onclick="connectMetaMask()">
+                            🦊 Connect MetaMask
+                        </button>
+                        <button id="metamaskDisconnectBtn" class="btn btn--outline btn--sm" onclick="disconnectMetaMask()" style="display: none;">
+                            Disconnect
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -337,7 +568,45 @@
                             <!-- Orders will be populated here -->
                         </div>
                     </section>
-                </div>
+
+                    <!-- Connection System Section -->
+                    <section class="connections-section">
+                        <h2>🔗 Connect with Others</h2>
+                        <div class="connections-tabs">
+                            <button class="tab-btn active" onclick="showTab('userDirectory')">👥 User Directory</button>
+                            <button class="tab-btn" onclick="showTab('connectionRequests')">📨 Requests</button>
+                            <button class="tab-btn" onclick="showTab('messages')">💬 Messages</button>
+                            <button class="tab-btn" onclick="showTab('activityFeed')">📰 Activity Feed</button>
+                        </div>
+                        
+                        <div class="tab-content active" id="userDirectory">
+                            <h3>Discover Users</h3>
+                            <div class="user-directory" id="userDirectory">
+                                <!-- Users will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="connectionRequests">
+                            <h3>Connection Requests</h3>
+                            <div class="connection-requests" id="connectionRequests">
+                                <!-- Connection requests will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="messages">
+                            <h3>Messages</h3>
+                            <div class="messages-container" id="messagesContainer">
+                                <!-- Messages will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="activityFeed">
+                            <h3>Recent Activity</h3>
+                            <div class="activity-feed" id="activityFeed">
+                                <!-- Activity feed will be populated here -->
+                            </div>
+                        </div>
+                    </section>
             </div>
         </main>
     </div>
@@ -460,6 +729,7 @@
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Cultivation:</span>
+                        <span class="detail-label">Cultivation:</span>
                         <span class="detail-value" id="verifiedCultivation">🌱 Method</span>
                     </div>
                     <div class="detail-row">
@@ -475,6 +745,126 @@
                     <button class="btn btn--primary" onclick="purchaseProduct()">Purchase Product</button>
                     <button class="btn btn--outline" onclick="closeModal('productModal')">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div id="chatModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>💬 Chat with <span id="chatUserName">User</span></h2>
+                <button class="modal-close" onclick="closeModal('chatModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- Chat messages will be populated here -->
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chatMessageInput" class="chat-input" placeholder="Type your message..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <button class="btn btn--primary" onclick="sendChatMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="userProfileModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👤 User Profile</h2>
+                <button class="modal-close" onclick="closeModal('userProfileModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="user-profile">
+                    <div class="profile-header">
+                        <h3 id="profileUserName">User Name</h3>
+                        <p class="profile-role" id="profileUserRole">Role</p>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-detail">
+                            <span class="detail-label">Email:</span>
+                            <span class="detail-value" id="profileUserEmail">email@example.com</span>
+                        </div>
+                        <div class="profile-detail">
+                            <span class="detail-label">Wallet:</span>
+                            <span class="detail-value" id="profileUserWallet">0x...</span>
+                        </div>
+                        <div class="profile-detail">
+                            <span class="detail-label">Joined:</span>
+                            <span class="detail-value" id="profileUserJoinDate">Date</span>
+                        </div>
+                        <div class="profile-detail" id="profileUserRoleInfo">
+                            <!-- Role-specific info will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MetaMask Installation Guide Modal -->
+    <div id="metamaskGuideModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🦊 Install MetaMask</h2>
+                <button class="modal-close" onclick="closeModal('metamaskGuideModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="metamask-guide">
+                    <div class="guide-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Install MetaMask Extension</h3>
+                            <p>Go to the official MetaMask website and install the browser extension:</p>
+                            <a href="https://metamask.io/download/" target="_blank" class="btn btn--metamask">
+                                🌐 Download MetaMask
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="guide-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Create or Import Wallet</h3>
+                            <p>Set up your MetaMask wallet by creating a new one or importing an existing wallet using your seed phrase.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="guide-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Switch to Test Network</h3>
+                            <p>For testing, switch to a test network like Goerli, Sepolia, or Mumbai. You can get test ETH from faucets.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="guide-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h3>Connect to AgroBlock</h3>
+                            <p>Once installed, refresh this page and click "🦊 Connect MetaMask" to connect your wallet.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metamask-features">
+                    <h3>Why Connect MetaMask?</h3>
+                    <ul>
+                        <li>🔐 <strong>Secure:</strong> Your private keys stay on your device</li>
+                        <li>🌐 <strong>Universal:</strong> Works with any Ethereum-compatible network</li>
+                        <li>💳 <strong>Real Transactions:</strong> Send actual crypto payments</li>
+                        <li>🔗 <strong>Blockchain Native:</strong> True Web3 experience</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn--outline" onclick="closeModal('metamaskGuideModal')">Close</button>
+                <button class="btn btn--primary" onclick="window.open('https://metamask.io/download/', '_blank')">
+                    🌐 Install MetaMask
+                </button>
             </div>
         </div>
     </div>
