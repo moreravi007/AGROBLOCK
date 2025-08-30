@@ -8,7 +8,17 @@ const AgroBlockApp = {
         transactions: [],
         pendingApprovals: [],
         currentUser: null,
-        nextId: 1
+        nextId: 1,
+        // New connection system data
+        connections: [],
+        connectionRequests: [],
+        messages: [],
+        userProfiles: [],
+        activityFeed: [],
+        // MetaMask integration
+        metamaskConnected: false,
+        metamaskAccount: null,
+        metamaskNetwork: null
     },
 
     // Vehicle types for transporters
@@ -147,6 +157,9 @@ const AgroBlockApp = {
             updateSignupForm();
         }
         
+        // Initialize MetaMask integration
+        this.initMetaMask();
+        
         console.log('AgroBlock application initialized');
     },
 
@@ -251,14 +264,21 @@ const AgroBlockApp = {
             return;
         }
 
-        // Generate wallet for new user
-        const wallet = this.generateWallet();
-        console.log('Generated wallet:', wallet);
+        // Use MetaMask wallet if connected, otherwise generate new wallet
+        let wallet;
+        if (this.data.metamaskConnected && this.data.metamaskAccount) {
+            wallet = this.data.metamaskAccount;
+            console.log('Using MetaMask wallet:', wallet);
+        } else {
+            wallet = this.generateWallet();
+            console.log('Generated new wallet:', wallet);
+        }
         
         const newUser = {
             id: 'user_' + this.data.nextId++,
             ...formData,
             wallet: wallet,
+            metamaskConnected: this.data.metamaskConnected || false,
             balance: this.defaultWalletBalances[formData.role],
             joinDate: new Date().toISOString(),
             transactions: []
@@ -451,6 +471,12 @@ const AgroBlockApp = {
         // Load produce grid
         this.loadFarmerCrops(farmerCrops);
         this.loadFarmerTransactions();
+        
+        // Load connection system
+        this.loadUserDirectory();
+        this.loadConnectionRequests();
+        this.loadMessages();
+        this.loadActivityFeed();
     },
 
     loadFarmerCrops(crops) {
@@ -560,6 +586,12 @@ const AgroBlockApp = {
         // Load job grids
         this.loadTransportJobs(availableJobs);
         this.loadActiveJobs(activeJobs);
+        
+        // Load connection system
+        this.loadUserDirectory();
+        this.loadConnectionRequests();
+        this.loadMessages();
+        this.loadActivityFeed();
     },
 
     loadTransportJobs(jobs) {
@@ -727,6 +759,12 @@ const AgroBlockApp = {
         this.loadIncomingProducts(incomingProducts);
         this.loadAwaitingConfirmation(awaitingConfirmation);
         this.loadWarehouseMarketplace(availableProducts);
+        
+        // Load connection system
+        this.loadUserDirectory();
+        this.loadConnectionRequests();
+        this.loadMessages();
+        this.loadActivityFeed();
     },
 
     loadPendingApprovals(approvals) {
@@ -910,6 +948,12 @@ const AgroBlockApp = {
         const availableProducts = this.data.crops.filter(crop => crop.status === 'delivered');
         this.loadCustomerMarketplace(availableProducts);
         this.loadCustomerOrders();
+        
+        // Load connection system
+        this.loadUserDirectory();
+        this.loadConnectionRequests();
+        this.loadMessages();
+        this.loadActivityFeed();
     },
 
     loadCustomerMarketplace(products) {
@@ -1007,6 +1051,9 @@ const AgroBlockApp = {
         this.data.crops.push(cropData);
         this.saveData();
 
+        // Add to activity feed
+        this.addActivityFeedItem('crop_added', this.data.currentUser.id, null, cropData.id);
+
         this.closeModal('addCropModal');
         this.showToast('Crop added successfully! Waiting for warehouse approval.', 'success');
         
@@ -1023,6 +1070,9 @@ const AgroBlockApp = {
 
         crop.status = 'approved';
         crop.approvedDate = new Date().toISOString();
+        
+        // Add to activity feed
+        this.addActivityFeedItem('crop_approved', this.data.currentUser.id, null, crop.id);
         
         this.saveData();
         this.showToast(`${crop.type} has been approved for transport!`, 'success');
@@ -1051,6 +1101,9 @@ const AgroBlockApp = {
         crop.status = 'picked_up';
         crop.pickupDate = new Date().toISOString();
         crop.transporterName = user.name || 'Unknown Transporter';
+        
+        // Add to activity feed
+        this.addActivityFeedItem('job_accepted', user.id, null, crop.id);
         
         this.saveData();
         this.showToast(`Job accepted! Please pick up ${crop.type} from the farm.`, 'success');
@@ -1097,10 +1150,13 @@ const AgroBlockApp = {
             // Process payments
             this.processPayments(crop);
             
-            this.saveData();
-            this.hideLoadingOverlay();
-            this.showToast(`${crop.type} arrival confirmed! Payments processed.`, 'success');
-            this.loadWarehouseDashboard();
+                    // Add to activity feed
+        this.addActivityFeedItem('payment_processed', warehouse.id, null, crop.id);
+        
+        this.saveData();
+        this.hideLoadingOverlay();
+        this.showToast(`${crop.type} arrival confirmed! Payments processed.`, 'success');
+        this.loadWarehouseDashboard();
         }, 2000);
     },
 
@@ -1406,6 +1462,960 @@ const AgroBlockApp = {
         console.log('Current user:', this.data.currentUser);
     },
 
+    // ===== USER CONNECTION SYSTEM =====
+
+    // Send connection request
+    sendConnectionRequest(targetUserId) {
+        const currentUser = this.data.currentUser;
+        if (!currentUser || currentUser.id === targetUserId) return;
+
+        // Check if request already exists
+        const existingRequest = this.data.connectionRequests.find(req => 
+            req.fromUserId === currentUser.id && req.toUserId === targetUserId
+        );
+
+        if (existingRequest) {
+            this.showToast('Connection request already sent', 'info');
+            return;
+        }
+
+        // Check if already connected
+        const existingConnection = this.data.connections.find(conn => 
+            (conn.user1Id === currentUser.id && conn.user2Id === targetUserId) ||
+            (conn.user1Id === targetUserId && conn.user2Id === currentUser.id)
+        );
+
+        if (existingConnection) {
+            this.showToast('Already connected with this user', 'info');
+            return;
+        }
+
+        const request = {
+            id: 'req_' + this.data.nextId++,
+            fromUserId: currentUser.id,
+            toUserId: targetUserId,
+            status: 'pending',
+            timestamp: new Date().toISOString(),
+            message: ''
+        };
+
+        this.data.connectionRequests.push(request);
+        this.saveData();
+        this.showToast('Connection request sent successfully!', 'success');
+        this.loadUserDirectory();
+    },
+
+    // Accept connection request
+    acceptConnectionRequest(requestId) {
+        const request = this.data.connectionRequests.find(req => req.id === requestId);
+        if (!request) return;
+
+        const currentUser = this.data.currentUser;
+        if (request.toUserId !== currentUser.id) return;
+
+        // Create connection
+        const connection = {
+            id: 'conn_' + this.data.nextId++,
+            user1Id: request.fromUserId,
+            user2Id: request.toUserId,
+            timestamp: new Date().toISOString(),
+            status: 'active'
+        };
+
+        this.data.connections.push(connection);
+        
+        // Update request status
+        request.status = 'accepted';
+        request.acceptedAt = new Date().toISOString();
+
+        // Add to activity feed
+        this.addActivityFeedItem('connection_accepted', currentUser.id, request.fromUserId);
+
+        this.saveData();
+        this.showToast('Connection accepted! You can now message this user.', 'success');
+        this.loadConnectionRequests();
+        this.loadUserDirectory();
+    },
+
+    // Reject connection request
+    rejectConnectionRequest(requestId) {
+        const request = this.data.connectionRequests.find(req => req.id === requestId);
+        if (!request) return;
+
+        const currentUser = this.data.currentUser;
+        if (request.toUserId !== currentUser.id) return;
+
+        request.status = 'rejected';
+        request.rejectedAt = new Date().toISOString();
+
+        this.saveData();
+        this.showToast('Connection request rejected', 'info');
+        this.loadConnectionRequests();
+    },
+
+    // Send message to connected user
+    sendMessage(toUserId, message) {
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return;
+
+        // Check if users are connected
+        const connection = this.data.connections.find(conn => 
+            (conn.user1Id === currentUser.id && conn.user2Id === toUserId) ||
+            (conn.user1Id === toUserId && conn.user2Id === currentUser.id)
+        );
+
+        if (!connection) {
+            this.showToast('You must be connected to send messages', 'error');
+            return;
+        }
+
+        const newMessage = {
+            id: 'msg_' + this.data.nextId++,
+            fromUserId: currentUser.id,
+            toUserId: toUserId,
+            message: message,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+
+        this.data.messages.push(newMessage);
+        this.saveData();
+        this.showToast('Message sent successfully!', 'success');
+        this.loadMessages();
+    },
+
+    // Mark message as read
+    markMessageAsRead(messageId) {
+        const message = this.data.messages.find(msg => msg.id === messageId);
+        if (message) {
+            message.read = true;
+            this.saveData();
+        }
+    },
+
+    // Get user profile
+    getUserProfile(userId) {
+        return this.data.users.find(u => u.id === userId);
+    },
+
+    // Get connected users
+    getConnectedUsers() {
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return [];
+
+        return this.data.connections
+            .filter(conn => conn.status === 'active')
+            .map(conn => {
+                const otherUserId = conn.user1Id === currentUser.id ? conn.user2Id : conn.user1Id;
+                return this.getUserProfile(otherUserId);
+            })
+            .filter(user => user);
+    },
+
+    // Get pending connection requests
+    getPendingConnectionRequests() {
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return [];
+
+        return this.data.connectionRequests.filter(req => 
+            req.toUserId === currentUser.id && req.status === 'pending'
+        );
+    },
+
+    // Get sent connection requests
+    getSentConnectionRequests() {
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return [];
+
+        return this.data.connectionRequests.filter(req => 
+            req.fromUserId === currentUser.id && req.status === 'pending'
+        );
+    },
+
+    // Add activity feed item
+    addActivityFeedItem(type, userId1, userId2 = null, cropId = null) {
+        const user1 = this.getUserProfile(userId1);
+        const user2 = userId2 ? this.getUserProfile(userId2) : null;
+        const crop = cropId ? this.data.crops.find(c => c.id === cropId) : null;
+
+        let activity = {
+            id: 'activity_' + this.data.nextId++,
+            type: type,
+            userId1: userId1,
+            userId2: userId2,
+            cropId: cropId,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+
+        switch (type) {
+            case 'crop_added':
+                activity.description = `${user1?.name || 'Unknown'} added new ${crop?.type || 'crop'}`;
+                break;
+            case 'crop_approved':
+                activity.description = `${user1?.name || 'Unknown'} approved ${crop?.type || 'crop'}`;
+                break;
+            case 'job_accepted':
+                activity.description = `${user1?.name || 'Unknown'} accepted transport job for ${crop?.type || 'crop'}`;
+                break;
+            case 'connection_accepted':
+                activity.description = `${user1?.name || 'Unknown'} and ${user2?.name || 'Unknown'} are now connected`;
+                break;
+            case 'payment_processed':
+                activity.description = `Payment processed for ${crop?.type || 'crop'} delivery`;
+                break;
+        }
+
+        this.data.activityFeed.push(activity);
+        this.saveData();
+    },
+
+    // Load user directory
+    loadUserDirectory() {
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return;
+
+        const container = document.getElementById('userDirectory');
+        if (!container) return;
+
+        const allUsers = this.data.users.filter(user => user.id !== currentUser.id);
+        const connectedUserIds = this.getConnectedUsers().map(u => u.id);
+        const pendingRequests = this.getSentConnectionRequests().map(req => req.toUserId);
+
+        container.innerHTML = allUsers.map(user => {
+            const isConnected = connectedUserIds.includes(user.id);
+            const hasPendingRequest = pendingRequests.includes(user.id);
+            const canConnect = !isConnected && !hasPendingRequest;
+
+            return `
+                <div class="user-card">
+                    <div class="user-avatar">
+                        <span class="avatar-emoji">${this.getRoleEmoji(user.role)}</span>
+                    </div>
+                    <div class="user-info">
+                        <h3>${user.name || user.companyName || 'Unknown User'}</h3>
+                        <p class="user-role">${this.getRoleDisplayName(user.role)}</p>
+                        <p class="user-email">${user.email}</p>
+                        ${user.farmAddress ? `<p class="user-location">📍 ${user.farmAddress}</p>` : ''}
+                        ${user.address ? `<p class="user-location">📍 ${user.address}</p>` : ''}
+                    </div>
+                    <div class="user-actions">
+                        ${isConnected ? 
+                            `<button class="btn btn--primary" onclick="AgroBlockApp.openChat('${user.id}')">
+                                💬 Message
+                            </button>` :
+                            hasPendingRequest ?
+                            `<span class="status status--warning">Request Sent</span>` :
+                            `<button class="btn btn--outline" onclick="AgroBlockApp.sendConnectionRequest('${user.id}')">
+                                🔗 Connect
+                            </button>`
+                        }
+                        <button class="btn btn--outline btn--sm" onclick="AgroBlockApp.viewUserProfile('${user.id}')">
+                            👁️ View Profile
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // Load connection requests
+    loadConnectionRequests() {
+        const container = document.getElementById('connectionRequests');
+        if (!container) return;
+
+        const pendingRequests = this.getPendingConnectionRequests();
+        const sentRequests = this.getSentConnectionRequests();
+
+        if (pendingRequests.length === 0 && sentRequests.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔗</div>
+                    <h3>No connection requests</h3>
+                    <p>You'll see connection requests here</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        if (pendingRequests.length > 0) {
+            html += '<h3>Incoming Requests</h3>';
+            html += pendingRequests.map(req => {
+                const fromUser = this.getUserProfile(req.fromUserId);
+                return `
+                    <div class="connection-request">
+                        <div class="request-info">
+                            <h4>${fromUser?.name || fromUser?.companyName || 'Unknown User'}</h4>
+                            <p>${fromUser?.role || 'Unknown Role'}</p>
+                            <small>${new Date(req.timestamp).toLocaleDateString()}</small>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn btn--primary" onclick="AgroBlockApp.acceptConnectionRequest('${req.id}')">
+                                ✅ Accept
+                            </button>
+                            <button class="btn btn--outline" onclick="AgroBlockApp.rejectConnectionRequest('${req.id}')">
+                                ❌ Reject
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        if (sentRequests.length > 0) {
+            html += '<h3>Sent Requests</h3>';
+            html += sentRequests.map(req => {
+                const toUser = this.getUserProfile(req.toUserId);
+                return `
+                    <div class="connection-request">
+                        <div class="request-info">
+                            <h4>${toUser?.name || toUser?.companyName || 'Unknown User'}</h4>
+                            <p>${toUser?.role || 'Unknown Role'}</p>
+                            <small>${new Date(req.timestamp).toLocaleDateString()}</small>
+                        </div>
+                        <div class="request-actions">
+                            <span class="status status--info">Pending</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        container.innerHTML = html;
+    },
+
+    // Load messages
+    loadMessages() {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return;
+
+        const userMessages = this.data.messages.filter(msg => 
+            msg.fromUserId === currentUser.id || msg.toUserId === currentUser.id
+        );
+
+        if (userMessages.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <h3>No messages yet</h3>
+                    <p>Connect with other users to start messaging</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Group messages by conversation
+        const conversations = {};
+        userMessages.forEach(msg => {
+            const otherUserId = msg.fromUserId === currentUser.id ? msg.toUserId : msg.fromUserId;
+            if (!conversations[otherUserId]) {
+                conversations[otherUserId] = [];
+            }
+            conversations[otherUserId].push(msg);
+        });
+
+        container.innerHTML = Object.entries(conversations).map(([otherUserId, messages]) => {
+            const otherUser = this.getUserProfile(otherUserId);
+            const lastMessage = messages[messages.length - 1];
+            const unreadCount = messages.filter(msg => 
+                msg.toUserId === currentUser.id && !msg.read
+            ).length;
+
+            return `
+                <div class="conversation-item" onclick="AgroBlockApp.openChat('${otherUserId}')">
+                    <div class="conversation-avatar">
+                        <span class="avatar-emoji">${this.getRoleEmoji(otherUser?.role)}</span>
+                    </div>
+                    <div class="conversation-info">
+                        <h4>${otherUser?.name || otherUser?.companyName || 'Unknown User'}</h4>
+                        <p class="last-message">${lastMessage.message.substring(0, 50)}${lastMessage.message.length > 50 ? '...' : ''}</p>
+                        <small>${new Date(lastMessage.timestamp).toLocaleDateString()}</small>
+                    </div>
+                    ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+    },
+
+    // Open chat with user
+    openChat(userId) {
+        const otherUser = this.getUserProfile(userId);
+        if (!otherUser) return;
+
+        // Mark messages as read
+        this.data.messages.forEach(msg => {
+            if (msg.fromUserId === userId && msg.toUserId === this.data.currentUser.id) {
+                msg.read = true;
+            }
+        });
+
+        this.saveData();
+        
+        // Update chat modal title
+        document.getElementById('chatUserName').textContent = otherUser.name || otherUser.companyName || 'Unknown User';
+        
+        this.showModal('chatModal');
+        this.loadChatMessages(userId);
+        this.currentChatUser = otherUser;
+    },
+
+    // Load chat messages
+    loadChatMessages(userId) {
+        const container = document.getElementById('chatMessages');
+        if (!container) return;
+
+        const currentUser = this.data.currentUser;
+        const messages = this.data.messages.filter(msg => 
+            (msg.fromUserId === currentUser.id && msg.toUserId === userId) ||
+            (msg.fromUserId === userId && msg.toUserId === currentUser.id)
+        ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        container.innerHTML = messages.map(msg => {
+            const isOwn = msg.fromUserId === currentUser.id;
+            return `
+                <div class="message ${isOwn ? 'message--own' : 'message--other'}">
+                    <div class="message-content">
+                        <p>${msg.message}</p>
+                        <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    },
+
+    // Send chat message
+    sendChatMessage() {
+        const input = document.getElementById('chatMessageInput');
+        const message = input.value.trim();
+        
+        if (!message || !this.currentChatUser) return;
+
+        this.sendMessage(this.currentChatUser.id, message);
+        input.value = '';
+        this.loadChatMessages(this.currentChatUser.id);
+    },
+
+    // View user profile
+    viewUserProfile(userId) {
+        const user = this.getUserProfile(userId);
+        if (!user) return;
+
+        document.getElementById('profileUserName').textContent = user.name || user.companyName || 'Unknown User';
+        document.getElementById('profileUserRole').textContent = this.getRoleDisplayName(user.role);
+        document.getElementById('profileUserEmail').textContent = user.email;
+        document.getElementById('profileUserWallet').textContent = user.wallet;
+        document.getElementById('profileUserJoinDate').textContent = new Date(user.joinDate).toLocaleDateString();
+
+        // Role-specific information
+        let roleInfo = '';
+        switch (user.role) {
+            case 'farmer':
+                roleInfo = `<p><strong>Farm Address:</strong> ${user.farmAddress || 'Not specified'}</p>`;
+                break;
+            case 'transporter':
+                roleInfo = `<p><strong>Vehicle Type:</strong> ${user.vehicleType || 'Not specified'}</p>`;
+                break;
+            case 'warehouseManager':
+                roleInfo = `<p><strong>Company Address:</strong> ${user.address || 'Not specified'}</p>`;
+                break;
+            case 'customer':
+                roleInfo = `<p><strong>Address:</strong> ${user.address || 'Not specified'}</p>`;
+                break;
+        }
+        document.getElementById('profileUserRoleInfo').innerHTML = roleInfo;
+
+        this.showModal('userProfileModal');
+    },
+
+    // Load activity feed
+    loadActivityFeed() {
+        const container = document.getElementById('activityFeed');
+        if (!container) return;
+
+        const currentUser = this.data.currentUser;
+        if (!currentUser) return;
+
+        const userActivities = this.data.activityFeed
+            .filter(activity => 
+                activity.userId1 === currentUser.id || 
+                activity.userId2 === currentUser.id ||
+                this.getConnectedUsers().some(u => u.id === activity.userId1 || u.id === activity.userId2)
+            )
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 20);
+
+        if (userActivities.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📰</div>
+                    <h3>No activity yet</h3>
+                    <p>Start connecting and working with others to see activity here</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = userActivities.map(activity => {
+            const user1 = this.getUserProfile(activity.userId1);
+            const user2 = activity.userId2 ? this.getUserProfile(activity.userId2) : null;
+            const crop = activity.cropId ? this.data.crops.find(c => c.id === activity.cropId) : null;
+
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        ${this.getActivityIcon(activity.type)}
+                    </div>
+                    <div class="activity-content">
+                        <p>${activity.description}</p>
+                        <small>${new Date(activity.timestamp).toLocaleString()}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // Get role emoji
+    getRoleEmoji(role) {
+        const emojiMap = {
+            'farmer': '👨‍🌾',
+            'transporter': '🚛',
+            'warehouseManager': '🏢',
+            'customer': '🛒'
+        };
+        return emojiMap[role] || '👤';
+    },
+
+    // Get role display name
+    getRoleDisplayName(role) {
+        const nameMap = {
+            'farmer': 'Farmer',
+            'transporter': 'Transporter',
+            'warehouseManager': 'Warehouse Manager',
+            'customer': 'Customer'
+        };
+        return nameMap[role] || role;
+    },
+
+    // Get activity icon
+    getActivityIcon(type) {
+        const iconMap = {
+            'crop_added': '🌱',
+            'crop_approved': '✅',
+            'job_accepted': '🚛',
+            'connection_accepted': '🔗',
+            'payment_processed': '💰'
+        };
+        return iconMap[type] || '📝';
+    },
+
+    // ===== METAMASK INTEGRATION =====
+
+    // Check if MetaMask is installed
+    isMetaMaskInstalled() {
+        return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
+    },
+
+    // Connect to MetaMask
+    async connectMetaMask() {
+        if (!this.isMetaMaskInstalled()) {
+            this.showModal('metamaskGuideModal');
+            return false;
+        }
+
+        try {
+            this.showLoadingOverlay('Connecting to MetaMask...');
+            
+            // Request account access
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts' 
+            });
+            
+            if (accounts.length === 0) {
+                this.showToast('No accounts found in MetaMask', 'error');
+                this.hideLoadingOverlay();
+                return false;
+            }
+
+            const account = accounts[0];
+            const networkId = await window.ethereum.request({ 
+                method: 'net_version' 
+            });
+
+            // Update application state
+            this.data.metamaskConnected = true;
+            this.data.metamaskAccount = account;
+            this.data.metamaskNetwork = this.getNetworkName(networkId);
+            
+            // Update current user's wallet if logged in
+            if (this.data.currentUser) {
+                this.data.currentUser.wallet = account;
+                this.data.currentUser.metamaskConnected = true;
+            }
+
+            this.saveData();
+            this.hideLoadingOverlay();
+            
+            this.showToast(`Connected to MetaMask! Account: ${account.substring(0, 6)}...${account.substring(38)}`, 'success');
+            
+            // Update UI
+            this.updateMetaMaskUI();
+            
+            // Listen for account changes
+            this.setupMetaMaskListeners();
+            
+            return true;
+        } catch (error) {
+            this.hideLoadingOverlay();
+            console.error('MetaMask connection error:', error);
+            
+            if (error.code === 4001) {
+                this.showToast('MetaMask connection rejected by user', 'error');
+            } else {
+                this.showToast(`MetaMask connection failed: ${error.message}`, 'error');
+            }
+            return false;
+        }
+    },
+
+    // Disconnect from MetaMask
+    disconnectMetaMask() {
+        this.data.metamaskConnected = false;
+        this.data.metamaskAccount = null;
+        this.data.metamaskNetwork = null;
+        
+        if (this.data.currentUser) {
+            this.data.currentUser.metamaskConnected = false;
+        }
+        
+        this.saveData();
+        this.showToast('Disconnected from MetaMask', 'info');
+        this.updateMetaMaskUI();
+    },
+
+    // Get network name from network ID
+    getNetworkName(networkId) {
+        const networks = {
+            '1': 'Ethereum Mainnet',
+            '3': 'Ropsten Testnet',
+            '4': 'Rinkeby Testnet',
+            '5': 'Goerli Testnet',
+            '42': 'Kovan Testnet',
+            '137': 'Polygon Mainnet',
+            '80001': 'Mumbai Testnet',
+            '56': 'BSC Mainnet',
+            '97': 'BSC Testnet'
+        };
+        return networks[networkId] || `Network ${networkId}`;
+    },
+
+    // Setup MetaMask event listeners
+    setupMetaMaskListeners() {
+        if (!window.ethereum) return;
+
+        // Listen for account changes
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length === 0) {
+                // User disconnected MetaMask
+                this.disconnectMetaMask();
+            } else {
+                // User switched accounts
+                const newAccount = accounts[0];
+                this.data.metamaskAccount = newAccount;
+                
+                if (this.data.currentUser) {
+                    this.data.currentUser.wallet = newAccount;
+                }
+                
+                this.saveData();
+                this.showToast(`Switched to account: ${newAccount.substring(0, 6)}...${newAccount.substring(38)}`, 'info');
+                this.updateMetaMaskUI();
+            }
+        });
+
+        // Listen for network changes
+        window.ethereum.on('chainChanged', (chainId) => {
+            const networkId = parseInt(chainId, 16);
+            const networkName = this.getNetworkName(networkId);
+            
+            this.data.metamaskNetwork = networkName;
+            this.saveData();
+            
+            this.showToast(`Switched to network: ${networkName}`, 'info');
+            this.updateMetaMaskUI();
+        });
+
+        // Listen for disconnect
+        window.ethereum.on('disconnect', () => {
+            this.disconnectMetaMask();
+        });
+    },
+
+    // Update MetaMask UI elements
+    updateMetaMaskUI() {
+        const connectBtn = document.getElementById('metamaskConnectBtn');
+        const disconnectBtn = document.getElementById('metamaskDisconnectBtn');
+        const accountInfo = document.getElementById('metamaskAccountInfo');
+        const networkInfo = document.getElementById('metamaskNetworkInfo');
+        const walletDisplay = document.getElementById('metamaskWalletDisplay');
+
+        if (this.data.metamaskConnected) {
+            // Update connect button
+            if (connectBtn) {
+                connectBtn.style.display = 'none';
+            }
+            if (disconnectBtn) {
+                disconnectBtn.style.display = 'inline-block';
+            }
+
+            // Update account info
+            if (accountInfo) {
+                const shortAccount = `${this.data.metamaskAccount.substring(0, 6)}...${this.data.metamaskAccount.substring(38)}`;
+                accountInfo.textContent = shortAccount;
+                accountInfo.title = this.data.metamaskAccount;
+            }
+
+            // Update network info
+            if (networkInfo) {
+                networkInfo.textContent = this.data.metamaskNetwork;
+            }
+
+            // Update wallet display
+            if (walletDisplay) {
+                walletDisplay.textContent = this.data.metamaskAccount;
+                walletDisplay.style.display = 'block';
+            }
+
+            // Update current user wallet if logged in
+            if (this.data.currentUser) {
+                this.data.currentUser.wallet = this.data.metamaskAccount;
+                this.data.currentUser.metamaskConnected = true;
+                this.saveData();
+            }
+        } else {
+            // Reset UI elements
+            if (connectBtn) {
+                connectBtn.style.display = 'inline-block';
+            }
+            if (disconnectBtn) {
+                disconnectBtn.style.display = 'none';
+            }
+            if (accountInfo) {
+                accountInfo.textContent = 'Not Connected';
+            }
+            if (networkInfo) {
+                networkInfo.textContent = 'Not Connected';
+            }
+            if (walletDisplay) {
+                walletDisplay.style.display = 'none';
+            }
+        }
+    },
+
+    // Get MetaMask account balance
+    async getMetaMaskBalance() {
+        if (!this.data.metamaskConnected || !this.data.metamaskAccount) {
+            return null;
+        }
+
+        try {
+            const balance = await window.ethereum.request({
+                method: 'eth_getBalance',
+                params: [this.data.metamaskAccount, 'latest']
+            });
+
+            // Convert from Wei to Ether
+            const balanceInEther = parseFloat(balance) / Math.pow(10, 18);
+            return balanceInEther;
+        } catch (error) {
+            console.error('Error getting balance:', error);
+            return null;
+        }
+    },
+
+    // Send transaction through MetaMask
+    async sendMetaMaskTransaction(toAddress, amount, data = '') {
+        if (!this.data.metamaskConnected || !this.data.metamaskAccount) {
+            this.showToast('Please connect MetaMask first', 'error');
+            return null;
+        }
+
+        try {
+            this.showLoadingOverlay('Preparing transaction...');
+            
+            const transactionParameters = {
+                to: toAddress,
+                from: this.data.metamaskAccount,
+                value: '0x' + (amount * Math.pow(10, 18)).toString(16), // Convert to Wei
+                data: data
+            };
+
+            // Get gas estimate
+            const gasEstimate = await window.ethereum.request({
+                method: 'eth_estimateGas',
+                params: [transactionParameters]
+            });
+
+            transactionParameters.gas = gasEstimate;
+
+            // Send transaction
+            const txHash = await window.ethereum.request({
+                method: 'eth_sendTransaction',
+                params: [transactionParameters]
+            });
+
+            this.hideLoadingOverlay();
+            this.showToast(`Transaction sent! Hash: ${txHash.substring(0, 10)}...`, 'success');
+            
+            return txHash;
+        } catch (error) {
+            this.hideLoadingOverlay();
+            console.error('Transaction error:', error);
+            
+            if (error.code === 4001) {
+                this.showToast('Transaction rejected by user', 'error');
+            } else {
+                this.showToast(`Transaction failed: ${error.message}`, 'error');
+            }
+            return null;
+        }
+    },
+
+    // Initialize MetaMask on app start
+    initMetaMask() {
+        if (this.isMetaMaskInstalled()) {
+            // Check if already connected
+            this.checkMetaMaskConnection();
+            
+            // Setup listeners
+            this.setupMetaMaskListeners();
+            
+            console.log('MetaMask integration initialized');
+        } else {
+            console.log('MetaMask not installed');
+        }
+    },
+
+    // Check if already connected to MetaMask
+    async checkMetaMaskConnection() {
+        try {
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_accounts' 
+            });
+            
+            if (accounts.length > 0) {
+                const account = accounts[0];
+                const networkId = await window.ethereum.request({ 
+                    method: 'net_version' 
+                });
+
+                this.data.metamaskConnected = true;
+                this.data.metamaskAccount = account;
+                this.data.metamaskNetwork = this.getNetworkName(networkId);
+                
+                this.saveData();
+                this.updateMetaMaskUI();
+            }
+        } catch (error) {
+            console.error('Error checking MetaMask connection:', error);
+        }
+    },
+
+    // Connect MetaMask during signup
+    async connectMetaMaskSignup() {
+        if (!this.isMetaMaskInstalled()) {
+            this.showModal('metamaskGuideModal');
+            return false;
+        }
+
+        try {
+            this.showLoadingOverlay('Connecting to MetaMask...');
+            
+            // Request account access
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts' 
+            });
+            
+            if (accounts.length === 0) {
+                this.showToast('No accounts found in MetaMask', 'error');
+                this.hideLoadingOverlay();
+                return false;
+            }
+
+            const account = accounts[0];
+            const networkId = await window.ethereum.request({ 
+                method: 'net_version' 
+            });
+
+            // Update signup form UI
+            this.updateMetaMaskSignupUI(account, this.getNetworkName(networkId));
+            
+            this.hideLoadingOverlay();
+            this.showToast(`Connected to MetaMask! Account: ${account.substring(0, 6)}...${account.substring(38)}`, 'success');
+            
+            return true;
+        } catch (error) {
+            this.hideLoadingOverlay();
+            console.error('MetaMask signup connection error:', error);
+            
+            if (error.code === 4001) {
+                this.showToast('MetaMask connection rejected by user', 'error');
+            } else {
+                this.showToast(`MetaMask connection failed: ${error.message}`, 'error');
+            }
+            return false;
+        }
+    },
+
+    // Disconnect MetaMask during signup
+    disconnectMetaMaskSignup() {
+        this.updateMetaMaskSignupUI(null, null);
+        this.showToast('MetaMask disconnected from signup form', 'info');
+    },
+
+    // Update MetaMask signup UI
+    updateMetaMaskSignupUI(account, network) {
+        const connectBtn = document.getElementById('metamaskSignupConnectBtn');
+        const disconnectBtn = document.getElementById('metamaskSignupDisconnectBtn');
+        const infoSection = document.getElementById('metamaskSignupInfo');
+        const networkInfo = document.getElementById('metamaskSignupNetwork');
+        const accountInfo = document.getElementById('metamaskSignupAccount');
+
+        if (account && network) {
+            // Connected state
+            if (connectBtn) connectBtn.style.display = 'none';
+            if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+            if (infoSection) infoSection.style.display = 'block';
+            if (networkInfo) networkInfo.textContent = network;
+            if (accountInfo) {
+                accountInfo.textContent = `${account.substring(0, 6)}...${account.substring(38)}`;
+                accountInfo.title = account;
+            }
+
+            // Hide generated wallet section
+            const walletPreview = document.getElementById('walletPreview');
+            if (walletPreview) walletPreview.style.display = 'none';
+        } else {
+            // Disconnected state
+            if (connectBtn) connectBtn.style.display = 'inline-block';
+            if (disconnectBtn) disconnectBtn.style.display = 'none';
+            if (infoSection) infoSection.style.display = 'none';
+            if (networkInfo) networkInfo.textContent = 'Not Connected';
+            if (accountInfo) accountInfo.textContent = 'Not Connected';
+
+            // Show generated wallet section
+            const walletPreview = document.getElementById('walletPreview');
+            if (walletPreview) walletPreview.style.display = 'block';
+        }
+    },
+
     refreshJobs() {
         this.showToast('Refreshing available jobs...', 'info');
         this.loadTransporterDashboard();
@@ -1545,6 +2555,31 @@ function showSignup() {
     AgroBlockApp.showPage('signupPage');
 }
 
+// Tab switching function
+function showTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const selectedTab = document.getElementById(tabName);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    const clickedButton = event.target;
+    if (clickedButton) {
+        clickedButton.classList.add('active');
+    }
+}
+
 function showForgotPassword() {
     AgroBlockApp.showToast('Forgot password feature coming soon!', 'info');
 }
@@ -1589,3 +2624,19 @@ window.confirmPickup = (cropId) => AgroBlockApp.confirmPickup(cropId);
 window.markDelivered = (cropId) => AgroBlockApp.markDelivered(cropId);
 window.confirmArrival = (cropId) => AgroBlockApp.confirmArrival(cropId);
 window.testWorkflow = () => AgroBlockApp.testWorkflow();
+
+// Connection system functions
+window.sendConnectionRequest = (userId) => AgroBlockApp.sendConnectionRequest(userId);
+window.acceptConnectionRequest = (requestId) => AgroBlockApp.acceptConnectionRequest(requestId);
+window.rejectConnectionRequest = (requestId) => AgroBlockApp.rejectConnectionRequest(requestId);
+window.openChat = (userId) => AgroBlockApp.openChat(userId);
+window.sendChatMessage = () => AgroBlockApp.sendChatMessage();
+window.viewUserProfile = (userId) => AgroBlockApp.viewUserProfile(userId);
+window.showTab = showTab;
+
+// MetaMask functions
+window.connectMetaMask = () => AgroBlockApp.connectMetaMask();
+window.disconnectMetaMask = () => AgroBlockApp.disconnectMetaMask();
+window.getMetaMaskBalance = () => AgroBlockApp.getMetaMaskBalance();
+window.connectMetaMaskSignup = () => AgroBlockApp.connectMetaMaskSignup();
+window.disconnectMetaMaskSignup = () => AgroBlockApp.disconnectMetaMaskSignup();
