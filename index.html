@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroBlock - From Farm to Fork, Verified by Blockchain</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page active">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="logo-section">
+                    <div class="logo-icon">🌱⛓️</div>
+                    <h1>AgroBlock</h1>
+                    <p>From Farm to Fork, Verified by Blockchain</p>
+                </div>
+                
+                <form id="loginForm" class="auth-form">
+                    <h2>Welcome Back</h2>
+                    <div class="form-group">
+                        <label class="form-label" for="loginEmail">Email</label>
+                        <input type="email" class="form-control" id="loginEmail" name="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="loginPassword">Password</label>
+                        <input type="password" class="form-control" id="loginPassword" name="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">Login</button>
+                    <div class="auth-links">
+                        <a href="#" onclick="showForgotPassword()">Forgot Password?</a>
+                        <a href="#" onclick="showSignup()">Don't have an account? Sign Up</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signup Page -->
+    <div id="signupPage" class="page">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="logo-section">
+                    <div class="logo-icon">🌱⛓️</div>
+                    <h1>AgroBlock</h1>
+                    <p>Join the Blockchain Revolution</p>
+                </div>
+                
+                <form id="signupForm" class="auth-form">
+                    <h2>Create Account</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="userRole">Select Your Role</label>
+                        <select class="form-control" id="userRole" name="userRole" required>
+                            <option value="">Choose your role...</option>
+                            <option value="farmer">Farmer</option>
+                            <option value="transporter">Transporter</option>
+                            <option value="warehouseManager">Warehouse Manager</option>
+                            <option value="customer">Customer</option>
+                        </select>
+                    </div>
+
+                    <div id="dynamicFormFields">
+                        <!-- Dynamic fields will be populated here -->
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="signupEmail">Email</label>
+                        <input type="email" class="form-control" id="signupEmail" name="signupEmail" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="signupPassword">Password</label>
+                        <input type="password" class="form-control" id="signupPassword" name="signupPassword" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="confirmPassword">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                    </div>
+
+                    <div class="wallet-preview" id="walletPreview" style="display: none;">
+                        <label class="form-label">Your Wallet Address (Auto-Generated)</label>
+                        <div class="wallet-display">
+                            <span id="generatedWallet"></span>
+                            <button type="button" class="btn btn--outline btn--sm" onclick="regenerateWallet()">🔄 Generate New</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn--primary btn--full-width">Create Account</button>
+                    <div class="auth-links">
+                        <a href="#" onclick="showLogin()">Already have an account? Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Farmer Dashboard -->
+    <div id="farmerDashboard" class="page">
+        <header class="dashboard-header">
+            <div class="container">
+                <div class="dashboard-title">
+                    <span class="role-emoji">👨‍🌾</span>
+                    <h1>Farmer Dashboard</h1>
+                    <button class="btn btn--outline btn--sm" onclick="logout()">Logout</button>
+                    <button class="btn btn--outline btn--sm" onclick="testWorkflow()" style="margin-left: 10px;">Test</button>
+                </div>
+                <div class="user-info">
+                    <span class="user-name" id="farmerName">Loading...</span>
+                    <span class="user-balance">💰 $<span id="farmerBalance">0.00</span></span>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalEarnings">$0</div>
+                        <div class="stat-label">Total Earnings</div>
+                        <div class="stat-trend">💰 From sales</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalCrops">0</div>
+                        <div class="stat-label">Total Crops</div>
+                        <div class="stat-trend">📦 Added</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activeCrops">0</div>
+                        <div class="stat-label">Active Crops</div>
+                        <div class="stat-trend">🚛 In process</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <section class="produce-section">
+                        <div class="section-header">
+                            <h2>My Produce</h2>
+                            <button class="btn btn--primary" onclick="showAddCropModal()">+ Add New Crop</button>
+                        </div>
+                        
+                        <div class="produce-grid" id="farmerProduceGrid">
+                            <!-- Crops will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="transactions-section">
+                        <h2>Transaction History</h2>
+                        <div class="transactions-list" id="farmerTransactions">
+                            <!-- Transactions will be populated here -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Transporter Dashboard -->
+    <div id="transporterDashboard" class="page">
+        <header class="dashboard-header">
+            <div class="container">
+                <div class="dashboard-title">
+                    <span class="role-emoji">🚛</span>
+                    <h1>Transporter Dashboard</h1>
+                    <button class="btn btn--outline btn--sm" onclick="logout()">Logout</button>
+                </div>
+                <div class="user-info">
+                    <span class="user-name" id="transporterName">Loading...</span>
+                    <span class="user-balance">💰 $<span id="transporterBalance">0.00</span></span>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="availableJobs">0</div>
+                        <div class="stat-label">Available Jobs</div>
+                        <div class="stat-trend">🎯 Ready to accept</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activeJobs">0</div>
+                        <div class="stat-label">Active Jobs</div>
+                        <div class="stat-trend">🚛 In progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalEarningsTransporter">$0</div>
+                        <div class="stat-label">Total Earnings</div>
+                        <div class="stat-trend">💰 Completed jobs</div>
+                    </div>
+                </div>
+
+                <section class="jobs-section">
+                    <div class="section-header">
+                        <h2>Available Transport Jobs</h2>
+                        <button class="btn btn--outline" onclick="refreshJobs()">🔄 Refresh</button>
+                    </div>
+                    <div class="jobs-grid" id="transportJobsGrid">
+                        <!-- Jobs will be populated here -->
+                    </div>
+                </section>
+
+                <section class="active-jobs-section">
+                    <h2>My Active Jobs</h2>
+                    <div class="jobs-grid" id="activeJobsGrid">
+                        <!-- Active jobs will be populated here -->
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Warehouse Manager Dashboard -->
+    <div id="warehouseManagerDashboard" class="page">
+        <header class="dashboard-header">
+            <div class="container">
+                <div class="dashboard-title">
+                    <span class="role-emoji">🏢</span>
+                    <h1>Warehouse Manager</h1>
+                    <button class="btn btn--outline btn--sm" onclick="logout()">Logout</button>
+                </div>
+                <div class="user-info">
+                    <span class="user-name" id="warehouseName">Loading...</span>
+                    <span class="user-balance">💰 $<span id="warehouseBalance">10000.00</span></span>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingApprovals">0</div>
+                        <div class="stat-label">Pending Approvals</div>
+                        <div class="stat-trend">⏳ Awaiting review</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="incomingProducts">0</div>
+                        <div class="stat-label">Incoming Products</div>
+                        <div class="stat-trend">🚛 In transit</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPayments">$0</div>
+                        <div class="stat-label">Total Payments</div>
+                        <div class="stat-trend">💸 To farmers & transporters</div>
+                    </div>
+                </div>
+
+                <div class="warehouse-sections">
+                    <section class="pending-approvals-section">
+                        <h2>Pending Crop Approvals</h2>
+                        <div class="products-list" id="pendingApprovalsList">
+                            <!-- Pending approvals will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="incoming-section">
+                        <h2>Incoming Products</h2>
+                        <div class="products-list" id="incomingProductsList">
+                            <!-- Incoming products will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="awaiting-confirmation-section">
+                        <h2>Products Awaiting Confirmation</h2>
+                        <div class="products-list" id="awaitingConfirmationList">
+                            <!-- Products awaiting confirmation will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="marketplace-section">
+                        <h2>Available for Sale</h2>
+                        <div class="marketplace-grid" id="warehouseMarketplace">
+                            <!-- Available products will be populated here -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Customer Dashboard -->
+    <div id="customerDashboard" class="page">
+        <header class="dashboard-header">
+            <div class="container">
+                <div class="dashboard-title">
+                    <span class="role-emoji">🛒</span>
+                    <h1>Customer Dashboard</h1>
+                    <button class="btn btn--outline btn--sm" onclick="logout()">Logout</button>
+                </div>
+                <div class="user-info">
+                    <span class="user-name" id="customerName">Loading...</span>
+                    <span class="user-balance">💰 $<span id="customerBalance">5000.00</span></span>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="container">
+                <div class="buyer-sections">
+                    <section class="scanner-section">
+                        <h2>QR Code Verification</h2>
+                        <div class="scanner-container">
+                            <div class="qr-scanner">
+                                <div class="scanner-frame" onclick="simulateQRScan()">
+                                    <div class="scanner-overlay"></div>
+                                    <span class="scanner-text">📱 Tap to Scan QR Code</span>
+                                </div>
+                            </div>
+                            <button class="btn btn--primary btn--lg" onclick="simulateQRScan()">Simulate QR Scan</button>
+                        </div>
+                    </section>
+
+                    <section class="marketplace-section">
+                        <h2>Verified Produce Marketplace</h2>
+                        <div class="marketplace-filters">
+                            <select class="form-control" onchange="filterProducts(this.value)">
+                                <option value="">All Products</option>
+                                <option value="vegetables">Vegetables</option>
+                                <option value="fruits">Fruits</option>
+                                <option value="grains">Grains</option>
+                            </select>
+                        </div>
+                        <div class="marketplace-grid" id="customerMarketplace">
+                            <!-- Available products will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="orders-section">
+                        <h2>My Orders</h2>
+                        <div class="orders-list" id="customerOrders">
+                            <!-- Orders will be populated here -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Crop Modal -->
+    <div id="addCropModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Crop</h2>
+                <button class="modal-close" onclick="closeModal('addCropModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addCropForm">
+                    <div class="form-group">
+                        <label class="form-label" for="cropType">Crop Type</label>
+                        <select class="form-control" id="cropType" name="cropType" required>
+                            <option value="">Select crop type...</option>
+                            <option value="Tomatoes">Tomatoes</option>
+                            <option value="Potatoes">Potatoes</option>
+                            <option value="Carrots">Carrots</option>
+                            <option value="Onions">Onions</option>
+                            <option value="Wheat">Wheat</option>
+                            <option value="Rice">Rice</option>
+                            <option value="Corn">Corn</option>
+                            <option value="Soybeans">Soybeans</option>
+                            <option value="Apples">Apples</option>
+                            <option value="Oranges">Oranges</option>
+                            <option value="Bananas">Bananas</option>
+                            <option value="Grapes">Grapes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cropQuantity">Quantity (kg)</label>
+                        <input type="number" class="form-control" id="cropQuantity" name="cropQuantity" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cropPrice">Price per kg ($)</label>
+                        <input type="number" class="form-control" id="cropPrice" name="cropPrice" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cultivationMethod">Cultivation Method</label>
+                        <select class="form-control" id="cultivationMethod" name="cultivationMethod" required>
+                            <option value="Organic">Organic</option>
+                            <option value="Conventional">Conventional</option>
+                            <option value="Hydroponic">Hydroponic</option>
+                            <option value="Greenhouse">Greenhouse</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="farmLocation">Farm Location</label>
+                        <input type="text" class="form-control" id="farmLocation" name="farmLocation" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="harvestDate">Expected Harvest Date</label>
+                        <input type="date" class="form-control" id="harvestDate" name="harvestDate" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">Add Crop</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>QR Code Generated</h2>
+                <button class="modal-close" onclick="closeModal('qrModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="qr-display">
+                    <div class="qr-code-large">
+                        <div class="qr-pattern">
+                            ⬛⬜⬛⬜⬛⬜⬛<br>
+                            ⬜⬛⬜⬛⬜⬛⬜<br>
+                            ⬛⬜⬛⬜⬛⬜⬛<br>
+                            ⬜⬛⬜⬛⬜⬛⬜<br>
+                            ⬛⬜⬛⬜⬛⬜⬛<br>
+                            ⬜⬛⬜⬛⬜⬛⬜<br>
+                            ⬛⬜⬛⬜⬛⬜⬛
+                        </div>
+                    </div>
+                </div>
+                <div class="qr-info">
+                    <h3 id="qrProductName">Product Name</h3>
+                    <p><strong>Blockchain TX:</strong> <span id="qrTxHash">0x1a2b3c...</span></p>
+                    <p><strong>QR ID:</strong> <span id="qrId">QR123456</span></p>
+                    <p><strong>Farmer:</strong> <span id="qrFarmer">Farmer Name</span></p>
+                    <p><strong>Verification URL:</strong> <span id="qrUrl">https://agroblock.com/verify/...</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Verification Modal -->
+    <div id="productModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Product Verification</h2>
+                <button class="modal-close" onclick="closeModal('productModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="verification-result">
+                    <div class="verification-icon">✅</div>
+                    <h3>Product Verified!</h3>
+                </div>
+                <div class="product-details">
+                    <h4 id="verifiedProductName">Product Name</h4>
+                    <div class="detail-row">
+                        <span class="detail-label">Farmer:</span>
+                        <span class="detail-value" id="verifiedFarmer">👨‍🌾 Farmer Name</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Location:</span>
+                        <span class="detail-value" id="verifiedLocation">📍 Farm Location</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Harvest Date:</span>
+                        <span class="detail-value" id="verifiedHarvestDate">📅 Date</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Cultivation:</span>
+                        <span class="detail-value" id="verifiedCultivation">🌱 Method</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Blockchain TX:</span>
+                        <span class="detail-value" id="verifiedTx">⛓️ 0x...</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Price:</span>
+                        <span class="detail-value" id="verifiedPrice">💰 $0.00/kg</span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn--primary" onclick="purchaseProduct()">Purchase Product</button>
+                    <button class="btn btn--outline" onclick="closeModal('productModal')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="toast hidden">
+        <div class="toast-content">
+            <span class="toast-icon">✅</span>
+            <span class="toast-message">Action completed successfully!</span>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
